@@ -17,19 +17,19 @@ module.exports = async (req, res) => {
 
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:generateImages?key=${apiKey}`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          instances: [{ prompt: prompt }],
-          parameters: {
-            sampleCount: 1,
+          prompt: prompt,
+          config: {
+            numberOfImages: 1,
             aspectRatio: '1:1',
-            outputOptions: { mimeType: 'image/jpeg' },
-          },
+            outputMimeType: 'image/jpeg'
+          }
         }),
       }
     );
@@ -43,8 +43,9 @@ module.exports = async (req, res) => {
       });
     }
 
-    if (data.predictions && data.predictions[0] && data.predictions[0].bytesBase64Encoded) {
-      const base64Image = data.predictions[0].bytesBase64Encoded;
+    // Extracción de la imagen según la estructura de respuesta de generateImages
+    if (data.generatedImages && data.generatedImages.length > 0) {
+      const base64Image = data.generatedImages[0].image.imageBytes;
       const imageUrl = `data:image/jpeg;base64,${base64Image}`;
 
       return res.status(200).json({
