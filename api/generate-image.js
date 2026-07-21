@@ -16,8 +16,9 @@ module.exports = async (req, res) => {
   }
 
   try {
+    // Apuntamos a la API v1alpha de Google AI Studio
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1alpha/models/imagen-3.0-generate-002:predict?key=${apiKey}`,
       {
         method: 'POST',
         headers: {
@@ -41,7 +42,7 @@ module.exports = async (req, res) => {
       data = JSON.parse(rawText);
     } catch (e) {
       return res.status(500).json({
-        error: 'La API de Google devolió una respuesta no-JSON.',
+        error: 'La API de Google devolvió una respuesta no válida (no JSON).',
         rawResponse: rawText,
       });
     }
