@@ -14,8 +14,9 @@ module.exports = async (req, res) => {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-    const response = await ai.models.generateImages({
-      model: 'imagen-3.0-generate-001',
+    // Se usa generateImage (en singular) que es la función nativa del SDK @google/genai
+    const response = await ai.models.generateImage({
+      model: 'imagen-3.0-generate-002',
       prompt: prompt,
       config: {
         numberOfImages: 1,
