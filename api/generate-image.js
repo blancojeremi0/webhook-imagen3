@@ -16,21 +16,21 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // Apuntamos a la API v1alpha de Google AI Studio
+    // Usamos imagen-3.0-generate-001 directamente
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1alpha/models/imagen-3.0-generate-002:predict?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:generateImages?key=${apiKey}`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          instances: [{ prompt: prompt }],
-          parameters: {
-            sampleCount: 1,
+          prompt: prompt,
+          config: {
+            numberOfImages: 1,
             aspectRatio: '1:1',
-            outputOptions: { mimeType: 'image/jpeg' },
-          },
+            outputMimeType: 'image/jpeg'
+          }
         }),
       }
     );
@@ -42,7 +42,7 @@ module.exports = async (req, res) => {
       data = JSON.parse(rawText);
     } catch (e) {
       return res.status(500).json({
-        error: 'La API de Google devolvió una respuesta no válida (no JSON).',
+        error: 'La API devolvió una respuesta no-JSON.',
         rawResponse: rawText,
       });
     }
@@ -54,8 +54,8 @@ module.exports = async (req, res) => {
       });
     }
 
-    if (data.predictions && data.predictions[0] && data.predictions[0].bytesBase64Encoded) {
-      const base64Image = data.predictions[0].bytesBase64Encoded;
+    if (data.generatedImages && data.generatedImages.length > 0) {
+      const base64Image = data.generatedImages[0].image.imageBytes;
       const imageUrl = `data:image/jpeg;base64,${base64Image}`;
 
       return res.status(200).json({
