@@ -20,11 +20,13 @@ module.exports = async (req, res) => {
       config: {
         numberOfImages: 1,
         outputMimeType: 'image/jpeg',
+        aspectRatio: '16:9', // Opcional pero recomendado para tus mockups
       },
     });
 
     if (response.generatedImages && response.generatedImages.length > 0) {
-      const base64Image = response.generatedImages[0].image.imageBytes;
+      const imgData = response.generatedImages[0].image;
+      const base64Image = imgData.imageBytes || imgData.bytesBase64Encoded;
       const imageUrl = `data:image/jpeg;base64,${base64Image}`;
 
       return res.status(200).json({
