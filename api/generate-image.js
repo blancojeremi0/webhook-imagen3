@@ -1,20 +1,53 @@
 import { GoogleGenAI } from '@google/genai';
 
 export default async function handler(req, res) {
-  // ... cabeceras CORS y validaciones de prompt / apiKey ...
+  // 1. Cabeceras CORS
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  console.log("=== INICIO DE PETICION ===");
 
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
+    // 2. Extraer el prompt correctamente de body o query
+    let body = req.body || {};
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch (e) {
+        body = {};
+      }
+    }
 
-    // 1. FORZAR LA VERSIÓN v1 DE GOOGLE AI STUDIO
+    // Acepta prompt enviándolo por POST (body) o por GET (URL query)
+    const prompt = body.prompt || req.query?.prompt;
+
+    if (!prompt) {
+      return res.status(400).json({ error: "Falta el parámetro 'prompt'." });
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: "Falta GEMINI_API_KEY en las variables de entorno." });
+    }
+
+    // 3. Inicializar SDK de Google AI Studio con la versión v1
     const ai = new GoogleGenAI({ 
       apiKey: apiKey,
       apiVersion: 'v1' 
     });
 
-    console.log("Generando imagen con Imagen 3...");
+    console.log(`Generando imagen para el prompt: "${prompt}"`);
 
-    // 2. LLAMADA CON EL MODELO ESTÁNDAR
+    // 4. Generar imagen
     const response = await ai.models.generateImages({
       model: 'imagen-3.0-generate-002',
       prompt: prompt,
