@@ -1,5 +1,3 @@
-const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
-
 module.exports = async (req, res) => {
   // 1. Cabeceras CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -54,7 +52,7 @@ module.exports = async (req, res) => {
     const base64Image = data.predictions?.[0]?.bytesBase64Encoded;
 
     if (!base64Image) {
-      return res.status(500).json({ error: "No se recibió la imagen de Google" });
+      return res.status(500).json({ error: "No se recibió la imagen de Google", response: data });
     }
 
     return res.status(200).json({ 
