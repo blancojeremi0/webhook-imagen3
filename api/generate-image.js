@@ -1,3 +1,5 @@
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+
 module.exports = async (req, res) => {
   // 1. Cabeceras CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -12,7 +14,7 @@ module.exports = async (req, res) => {
     return res.status(200).end();
   }
 
-  // 2. Obtener el prompt
+  // 2. Extraer Prompt
   const prompt = req.body?.prompt || req.query?.prompt;
   if (!prompt) {
     return res.status(400).json({ error: "El prompt es obligatorio" });
@@ -25,7 +27,6 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // URL con versión estable 001
     const googleUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${apiKey}`;
 
     const googleResponse = await fetch(googleUrl, {
@@ -45,7 +46,7 @@ module.exports = async (req, res) => {
 
     if (!googleResponse.ok) {
       return res.status(googleResponse.status).json({ 
-        error: data.error?.message || "Error de Google", 
+        error: data.error?.message || "Error devuelto por Google",
         details: data 
       });
     }
@@ -53,7 +54,7 @@ module.exports = async (req, res) => {
     const base64Image = data.predictions?.[0]?.bytesBase64Encoded;
 
     if (!base64Image) {
-      return res.status(500).json({ error: "No se recibió la imagen" });
+      return res.status(500).json({ error: "No se recibió la imagen de Google" });
     }
 
     return res.status(200).json({ 
