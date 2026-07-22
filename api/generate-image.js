@@ -1,31 +1,50 @@
-export default async function handler(req, res) {
-  // 1. Configurar cabeceras CORS
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*'); // Permite peticiones desde Botpress
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  );
+import { GoogleGenAI } from '@google/genai';
 
-  // 2. Responder 200 OK inmediatamente a las peticiones preflight (OPTIONS)
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+export default async function handler(req, res) {
+  // 1. Cabeceras CORS
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
   if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
+    return res.status(200).end();
   }
 
-  // 3. Validar que sea un método POST
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Método no permitido. Usa POST.' });
+    return res.status(405).json({ error: 'Método no permitido' });
   }
 
   try {
     const { prompt } = req.body;
 
-    // --- AQUÍ VA TU CÓDIGO EXISTENTE DE GEMINI / IMAGEN 3 ---
-    // (Llamada a la API de Imagen 3 y retorno del imageUrl)
+    if (!prompt) {
+      return res.status(400).json({ error: 'El prompt está vacío' });
+    }
+
+    // 2. Llamada a la API de Imagen 3
+    const response = await ai.models.generateImages({
+      model: 'imagen-3.0-generate-002',
+      prompt: prompt,
+      config: {
+        numberOfImages: 1,
+        outputMimeType: 'image/jpeg',
+        aspectRatio: '1:1',
+      },
+    });
+
+    // Extract de la imagen base64
+    const base64ImageBytes = response.generatedImages[0].image.imageBytes;
+    const imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
+
+    // 3. ¡IMPORTANTE! Retornar la respuesta inmediatamente
+    return res.status(200).json({ imageUrl });
 
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    console.error("Error en Imagen 3:", error);
+    // Responder con error explícito para que no se quede congelado
+    return res.status(500).json({ error: error.message || 'Error al generar la imagen' });
   }
 }
