@@ -1,7 +1,5 @@
-import { GoogleGenAI } from '@google/genai';
-
 export default async function handler(req, res) {
-  // 1. Cabeceras CORS
+  // 1. Manejar llamadas CORS (para que Botpress pueda conectarse sin bloqueos)
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -10,44 +8,28 @@ export default async function handler(req, res) {
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
   );
 
-  // 2. Preflight de CORS
+  // Si es una petición de verificación (preflight), respondemos OK de una vez
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
-  // 3. Validación de método
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Método no permitido. Usa POST.' });
+  // 2. Extraer el prompt recibido por POST
+  const prompt = req.body?.prompt || req.query?.prompt;
+
+  if (!prompt) {
+    return res.status(400).json({ error: "El prompt es obligatorio" });
   }
 
   try {
-    const { prompt } = req.body;
+    // --- AQUÍ VA TU LÓGICA DE GEMINI / IMAGEN 3 ---
+    // (Llamada a la API de Google para generar la imagen)
 
-    if (!prompt) {
-      return res.status(400).json({ error: 'El prompt está vacío' });
-    }
-
-    // Inicializar cliente con la API key de entorno
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-    // Llamada a Imagen 3
-    const response = await ai.models.generateImages({
-      model: 'imagen-3.0-generate-002',
-      prompt: prompt,
-      config: {
-        numberOfImages: 1,
-        outputMimeType: 'image/jpeg',
-        aspectRatio: '1:1',
-      },
+    // 3. Devuelves la respuesta con la URL
+    return res.status(200).json({ 
+      imageUrl: "URL_DE_LA_IMAGEN_GENERADA" 
     });
 
-    const base64ImageBytes = response.generatedImages[0].image.imageBytes;
-    const imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
-
-    return res.status(200).json({ imageUrl });
-
   } catch (error) {
-    console.error("Error en Imagen 3:", error);
-    return res.status(500).json({ error: error.message || 'Error interno del servidor' });
+    return res.status(500).json({ error: error.message });
   }
 }
