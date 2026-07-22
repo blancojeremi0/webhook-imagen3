@@ -1,4 +1,11 @@
-export default async function handler(req, res) {
+// Desactivar el body parser automático de Vercel para evitar fallos si el JSON viene corrupto o gigante
+export const config = {
+  api: {
+    bodyParser: true,
+  },
+};
+
+module.exports = async function handler(req, res) {
   // 1. Cabeceras CORS
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -13,8 +20,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 2. Parseo ultra-seguro del Body
-    let body = req.body;
+    // 2. Extraer Prompt de forma ultra segura
+    let body = req.body || {};
     if (typeof body === 'string') {
       try {
         body = JSON.parse(body);
@@ -23,18 +30,22 @@ export default async function handler(req, res) {
       }
     }
 
-    const prompt = body?.prompt || req.query?.prompt;
+    const prompt = body.prompt || req.query?.prompt;
+
     if (!prompt) {
-      return res.status(400).json({ error: "El prompt es obligatorio. Verifica el JSON enviado desde Botpress." });
+      return res.status(400).json({
+        error: "No se recibió el campo 'prompt'. Revisa la tarjeta de Botpress.",
+        receivedBody: body
+      });
     }
 
-    // 3. Verificación de API Key
+    // 3. Obtener API Key
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: "Falta la variable GEMINI_API_KEY en las variables de entorno de Vercel." });
+      return res.status(500).json({ error: "Falta GEMINI_API_KEY en las variables de entorno de Vercel." });
     }
 
-    // 4. Llamada a la API de Google Imagen 3
+    // 4. Petición a Google AI Studio (Imagen 3)
     const googleUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key=${apiKey}`;
 
     const googleResponse = await fetch(googleUrl, {
@@ -53,26 +64,26 @@ export default async function handler(req, res) {
     const data = await googleResponse.json();
 
     if (!googleResponse.ok) {
-      return res.status(googleResponse.status).json({ 
-        error: "Error devuelto por la API de Google",
-        details: data 
+      return res.status(googleResponse.status).json({
+        error: "Google rechazó la solicitud",
+        details: data
       });
     }
 
     const base64Image = data.generatedImages?.[0]?.image?.imageBytes;
     if (!base64Image) {
-      return res.status(500).json({ error: "Google no devolvió la estructura de imagen esperada", details: data });
+      return res.status(500).json({ error: "Estructura de respuesta no válida de Google", rawResponse: data });
     }
 
-    return res.status(200).json({ 
-      imageUrl: `data:image/jpeg;base64,${base64Image}` 
+    return res.status(200).json({
+      imageUrl: `data:image/jpeg;base64,${base64Image}`
     });
 
-  } catch (error) {
-    // Captura cualquier fallo interno antes de que Vercel muera en 500
-    return res.status(500).json({ 
-      error: "Error interno en el Serverless Handler", 
-      message: error.message 
+  } catch (err) {
+    return res.status(500).json({
+      error: "Error interno en el servidor",
+      message: err.message,
+      stack: err.stack
     });
   }
-}
+};
