@@ -1,3 +1,5 @@
+import { GoogleGenAI } from '@google/genai';
+
 export default async function handler(req, res) {
   // 1. Cabeceras CORS
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -12,8 +14,7 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  console.log("=== INICIO DE PETICION ===");
-  console.log("Método:", req.method);
+  console.log("=== INICIO DE PETICION (SDK OFICIAL) ===");
 
   try {
     let body = req.body || {};
@@ -28,72 +29,47 @@ export default async function handler(req, res) {
     const prompt = body.prompt || req.query?.prompt;
 
     if (!prompt) {
-      console.error("ERROR: No llegó el prompt");
       return res.status(400).json({ error: "Falta el parámetro 'prompt'." });
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      console.error("ERROR: No existe GEMINI_API_KEY en Vercel");
       return res.status(500).json({ error: "Falta GEMINI_API_KEY en las variables de entorno de Vercel." });
     }
 
-    console.log("Enviando petición a Google AI Studio...");
+    // Inicializar cliente oficial de Google Gen AI
+    const ai = new GoogleGenAI({ apiKey: apiKey });
 
-    // ENDPOINT Y MODELO OFICIAL SEGÚN GOOGLE AI STUDIO
-    const googleUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key=${apiKey}`;
+    console.log("Generando imagen con Imagen 3...");
 
-    const googleResponse = await fetch(googleUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prompt: prompt,
-        config: {
-          numberOfImages: 1,
-          outputMimeType: "image/jpeg",
-          aspectRatio: "1:1"
-        }
-      })
+    // Llamada oficial a Imagen 3
+    const response = await ai.models.generateImages({
+      model: 'imagen-3.0-generate-002',
+      prompt: prompt,
+      config: {
+        numberOfImages: 1,
+        outputMimeType: 'image/jpeg',
+        aspectRatio: '1:1',
+      },
     });
 
-    console.log("Respuesta de Google Status:", googleResponse.status);
-
-    const rawText = await googleResponse.text();
-    console.log("Respuesta cruda de Google:", rawText);
-
-    let data;
-    try {
-      data = JSON.parse(rawText);
-    } catch (e) {
-      return res.status(500).json({
-        error: "Google no devolvió un JSON válido",
-        httpStatus: googleResponse.status,
-        rawResponse: rawText
-      });
-    }
-
-    if (!googleResponse.ok) {
-      return res.status(googleResponse.status).json({
-        error: "Google rechazó la solicitud",
-        details: data
-      });
-    }
-
-    // Extraer base64 desde la estructura oficial de generateImages
-    const base64Image = data.generatedImages?.[0]?.image?.imageBytes;
+    const base64Image = response.generatedImages?.[0]?.image?.imageBytes;
 
     if (!base64Image) {
-      return res.status(500).json({ error: "No se encontró la propiedad de imagen en la respuesta", details: data });
+      console.error("Respuesta sin imagen:", JSON.stringify(response));
+      return res.status(500).json({ error: "Google no devolvió la imagen esperada", rawResponse: response });
     }
+
+    console.log("¡Imagen generada exitosamente!");
 
     return res.status(200).json({
       imageUrl: `data:image/jpeg;base64,${base64Image}`
     });
 
   } catch (err) {
-    console.error("ERROR CRÍTICO:", err.message);
+    console.error("ERROR EN EL SDK:", err);
     return res.status(500).json({
-      error: "Error interno del servidor",
+      error: "Error procesando la imagen con el SDK de Google",
       message: err.message
     });
   }
