@@ -1,46 +1,31 @@
-const { GoogleGenAI } = require('@google/genai');
+export default async function handler(req, res) {
+  // 1. Configurar cabeceras CORS
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*'); // Permite peticiones desde Botpress
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
 
-module.exports = async (req, res) => {
+  // 2. Responder 200 OK inmediatamente a las peticiones preflight (OPTIONS)
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
+  // 3. Validar que sea un método POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método no permitido. Usa POST.' });
   }
 
-  const { prompt } = req.body;
-
-  if (!prompt) {
-    return res.status(400).json({ error: 'El campo "prompt" es obligatorio.' });
-  }
-
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const { prompt } = req.body;
 
-    const response = await ai.models.generateImages({
-      model: 'imagen-3.0-generate-002',
-      prompt: prompt,
-      config: {
-        numberOfImages: 1,
-        outputMimeType: 'image/jpeg',
-        aspectRatio: '16:9', // Opcional pero recomendado para tus mockups
-      },
-    });
+    // --- AQUÍ VA TU CÓDIGO EXISTENTE DE GEMINI / IMAGEN 3 ---
+    // (Llamada a la API de Imagen 3 y retorno del imageUrl)
 
-    if (response.generatedImages && response.generatedImages.length > 0) {
-      const imgData = response.generatedImages[0].image;
-      const base64Image = imgData.imageBytes || imgData.bytesBase64Encoded;
-      const imageUrl = `data:image/jpeg;base64,${base64Image}`;
-
-      return res.status(200).json({
-        success: true,
-        image_url: imageUrl,
-      });
-    } else {
-      return res.status(500).json({ error: 'No se devolvió la imagen desde la API.' });
-    }
   } catch (error) {
-    console.error('Error al generar la imagen:', error);
-    return res.status(500).json({
-      error: 'Error interno del servidor',
-      details: error.message,
-    });
+    return res.status(500).json({ error: error.message });
   }
-};
+}
