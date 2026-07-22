@@ -42,9 +42,9 @@ export default async function handler(req, res) {
 
     console.log("Generando imagen con Imagen 3...");
 
-    // Llamada oficial a Imagen 3
+// Llamada oficial a Imagen 3 ajustada para AI Studio
     const response = await ai.models.generateImages({
-      model: 'imagen-3.0-generate-002',
+      model: 'imagen-3.0-generate-001', // <-- Cambiar de 002 a 001
       prompt: prompt,
       config: {
         numberOfImages: 1,
