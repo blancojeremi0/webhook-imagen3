@@ -44,7 +44,7 @@ export default async function handler(req, res) {
 
 // Llamada oficial a Imagen 3 ajustada para AI Studio
     const response = await ai.models.generateImages({
-      model: 'imagen-3.0-fast-generate-001', // <-- Cambiar de 002 a 001
+      model: 'imagen-3.0-fast-generate-001',
       prompt: prompt,
       config: {
         numberOfImages: 1,
