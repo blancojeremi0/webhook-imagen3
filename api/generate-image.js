@@ -14,7 +14,6 @@ export default async function handler(req, res) {
 
   console.log("=== INICIO DE PETICION ===");
   console.log("Método:", req.method);
-  console.log("Body recibido:", JSON.stringify(req.body));
 
   try {
     let body = req.body || {};
@@ -36,7 +35,7 @@ export default async function handler(req, res) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       console.error("ERROR: No existe GEMINI_API_KEY en Vercel");
-      return res.status(500).json({ error: "Falta GEMINI_API_KEY en Vercel." });
+      return res.status(500).json({ error: "Falta GEMINI_API_KEY en las variables de entorno de Vercel." });
     }
 
     console.log("Enviando petición a Google AI Studio...");
@@ -55,9 +54,22 @@ export default async function handler(req, res) {
       })
     });
 
-    const data = await googleResponse.json();
     console.log("Respuesta de Google Status:", googleResponse.status);
-    console.log("Respuesta de Google Data:", JSON.stringify(data));
+
+    // Leer el texto crudo de la respuesta para evitar "Unexpected end of JSON input"
+    const rawText = await googleResponse.text();
+    console.log("Respuesta cruda de Google:", rawText);
+
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch (e) {
+      return res.status(500).json({
+        error: "Google no devolvió un JSON válido",
+        httpStatus: googleResponse.status,
+        rawResponse: rawText
+      });
+    }
 
     if (!googleResponse.ok) {
       return res.status(googleResponse.status).json({
