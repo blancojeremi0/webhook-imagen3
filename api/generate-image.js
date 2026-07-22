@@ -12,8 +12,18 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
+  // Asegurar que req.body existe si viene como string desde Botpress
+  let body = req.body;
+  if (typeof body === 'string') {
+    try {
+      body = JSON.parse(body);
+    } catch (e) {
+      body = {};
+    }
+  }
+
   // 2. Extraer Prompt
-  const prompt = req.body?.prompt || req.query?.prompt;
+  const prompt = body?.prompt || req.query?.prompt;
   if (!prompt) {
     return res.status(400).json({ error: "El prompt es obligatorio" });
   }
@@ -25,17 +35,21 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 4. Endpoint OFICIAL de Google AI Studio para Imagen 3
+    // 4. Endpoint OFICIAL para Imagen 3
     const googleUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key=${apiKey}`;
 
     const googleResponse = await fetch(googleUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        prompt: prompt,
-        config: {
-          numberOfImages: 1,
-          outputMimeType: "image/jpeg",
+        instances: [
+          { prompt: prompt }
+        ],
+        parameters: {
+          sampleCount: 1,
+          outputOptions: {
+            mimeType: "image/jpeg"
+          },
           aspectRatio: "1:1"
         }
       })
@@ -51,7 +65,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // 5. Extraer la imagen en base64 de la respuesta oficial
+    // 5. Extraer la imagen en base64 de la respuesta
     const base64Image = data.generatedImages?.[0]?.image?.imageBytes;
 
     if (!base64Image) {
