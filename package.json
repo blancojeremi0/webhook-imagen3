@@ -1,6 +1,7 @@
 {
   "name": "webhook-imagen3-tm",
   "version": "1.0.0",
+  "type": "module",
   "dependencies": {
     "@google/genai": "latest"
   }
