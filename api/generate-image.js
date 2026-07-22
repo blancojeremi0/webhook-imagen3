@@ -1,11 +1,4 @@
-// Desactivar el body parser automático de Vercel para evitar fallos si el JSON viene corrupto o gigante
-export const config = {
-  api: {
-    bodyParser: true,
-  },
-};
-
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   // 1. Cabeceras CORS
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -34,7 +27,7 @@ module.exports = async function handler(req, res) {
 
     if (!prompt) {
       return res.status(400).json({
-        error: "No se recibió el campo 'prompt'. Revisa la tarjeta de Botpress.",
+        error: "No se recibió el campo 'prompt'. Revisa el JSON enviado desde Botpress.",
         receivedBody: body
       });
     }
@@ -45,7 +38,7 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: "Falta GEMINI_API_KEY en las variables de entorno de Vercel." });
     }
 
-    // 4. Petición a Google AI Studio (Imagen 3)
+    // 4. Petición a Google AI Studio (Imagen 3 con estructura correcta para REST)
     const googleUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key=${apiKey}`;
 
     const googleResponse = await fetch(googleUrl, {
@@ -86,4 +79,4 @@ module.exports = async function handler(req, res) {
       stack: err.stack
     });
   }
-};
+}
