@@ -12,8 +12,11 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
+  console.log("=== INICIO DE PETICION ===");
+  console.log("Método:", req.method);
+  console.log("Body recibido:", JSON.stringify(req.body));
+
   try {
-    // 2. Extraer Prompt de forma ultra segura
     let body = req.body || {};
     if (typeof body === 'string') {
       try {
@@ -26,19 +29,17 @@ export default async function handler(req, res) {
     const prompt = body.prompt || req.query?.prompt;
 
     if (!prompt) {
-      return res.status(400).json({
-        error: "No se recibió el campo 'prompt'. Revisa el JSON enviado desde Botpress.",
-        receivedBody: body
-      });
+      console.error("ERROR: No llegó el prompt");
+      return res.status(400).json({ error: "Falta el parámetro 'prompt'." });
     }
 
-    // 3. Obtener API Key
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: "Falta GEMINI_API_KEY en las variables de entorno de Vercel." });
+      console.error("ERROR: No existe GEMINI_API_KEY en Vercel");
+      return res.status(500).json({ error: "Falta GEMINI_API_KEY en Vercel." });
     }
 
-    // 4. Petición a Google AI Studio (Imagen 3 con estructura correcta para REST)
+    console.log("Enviando petición a Google AI Studio...");
     const googleUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key=${apiKey}`;
 
     const googleResponse = await fetch(googleUrl, {
@@ -55,6 +56,8 @@ export default async function handler(req, res) {
     });
 
     const data = await googleResponse.json();
+    console.log("Respuesta de Google Status:", googleResponse.status);
+    console.log("Respuesta de Google Data:", JSON.stringify(data));
 
     if (!googleResponse.ok) {
       return res.status(googleResponse.status).json({
@@ -65,7 +68,7 @@ export default async function handler(req, res) {
 
     const base64Image = data.generatedImages?.[0]?.image?.imageBytes;
     if (!base64Image) {
-      return res.status(500).json({ error: "Estructura de respuesta no válida de Google", rawResponse: data });
+      return res.status(500).json({ error: "No se recibió la imagen base64 de Google", details: data });
     }
 
     return res.status(200).json({
@@ -73,10 +76,10 @@ export default async function handler(req, res) {
     });
 
   } catch (err) {
+    console.error("ERROR CRÍTICO:", err.message);
     return res.status(500).json({
-      error: "Error interno en el servidor",
-      message: err.message,
-      stack: err.stack
+      error: "Error interno del servidor",
+      message: err.message
     });
   }
 }
