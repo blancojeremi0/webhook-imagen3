@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  // 1. Manejo de cabeceras CORS
+  // 1. Cabeceras CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
@@ -18,25 +18,25 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "El prompt es obligatorio" });
   }
 
-  // 3. API Key
+  // 3. Obtener API Key
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: "Falta GEMINI_API_KEY en las variables de entorno de Vercel" });
+    return res.status(500).json({ error: "Falta GEMINI_API_KEY en Vercel" });
   }
 
   try {
-    // 4. Llamada HTTP directa a la API REST de Imagen 3 (usando fetch nativo)
-    const googleUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${apiKey}`;
+    // 4. Endpoint OFICIAL de Google AI Studio para Imagen 3
+    const googleUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key=${apiKey}`;
 
     const googleResponse = await fetch(googleUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        instances: [{ prompt: prompt }],
-        parameters: { 
-          sampleCount: 1, 
-          aspectRatio: "1:1", 
-          outputOptions: { mimeType: "image/jpeg" } 
+        prompt: prompt,
+        config: {
+          numberOfImages: 1,
+          outputMimeType: "image/jpeg",
+          aspectRatio: "1:1"
         }
       })
     });
@@ -44,19 +44,21 @@ export default async function handler(req, res) {
     const data = await googleResponse.json();
 
     if (!googleResponse.ok) {
+      console.error("Error devuelto por Google:", data);
       return res.status(googleResponse.status).json({ 
         error: data.error?.message || "Error devuelto por la API de Google",
         details: data 
       });
     }
 
-    const base64Image = data.predictions?.[0]?.bytesBase64Encoded;
+    // 5. Extraer la imagen en base64 de la respuesta oficial
+    const base64Image = data.generatedImages?.[0]?.image?.imageBytes;
 
     if (!base64Image) {
-      return res.status(500).json({ error: "Google no devolvió la imagen", response: data });
+      return res.status(500).json({ error: "Google no devolvió la estructura de imagen esperada", response: data });
     }
 
-    // 5. Retornar Data URL lista para Botpress
+    // 6. Retornar la Data URL
     return res.status(200).json({ 
       imageUrl: `data:image/jpeg;base64,${base64Image}` 
     });
