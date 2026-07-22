@@ -1,5 +1,3 @@
-import { GoogleGenAI } from '@google/genai';
-
 export default async function handler(req, res) {
   // 1. Cabeceras CORS
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -14,20 +12,12 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  console.log("=== INICIO DE PETICION ===");
-
   try {
-    // 2. Extraer el prompt correctamente de body o query
+    // 2. Obtener el prompt (sirve para GET y POST)
     let body = req.body || {};
     if (typeof body === 'string') {
-      try {
-        body = JSON.parse(body);
-      } catch (e) {
-        body = {};
-      }
+      try { body = JSON.parse(body); } catch (e) { body = {}; }
     }
-
-    // Acepta prompt enviándolo por POST (body) o por GET (URL query)
     const prompt = body.prompt || req.query?.prompt;
 
     if (!prompt) {
@@ -36,32 +26,39 @@ export default async function handler(req, res) {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: "Falta GEMINI_API_KEY en las variables de entorno." });
+      return res.status(500).json({ error: "Falta la variable GEMINI_API_KEY en Vercel." });
     }
 
-    // 3. Inicializar SDK de Google AI Studio con la versión v1
-    const ai = new GoogleGenAI({ 
-      apiKey: apiKey,
-      apiVersion: 'v1' 
+    // 3. Petición directa a la REST API de Google AI Studio
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
+
+    const googleRes = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        instances: [{ prompt: prompt }],
+        parameters: {
+          sampleCount: 1,
+          aspectRatio: "1:1",
+          outputOptions: { mimeType: "image/jpeg" }
+        }
+      })
     });
 
-    console.log(`Generando imagen para el prompt: "${prompt}"`);
+    const data = await googleRes.json();
 
-    // 4. Generar imagen
-    const response = await ai.models.generateImages({
-      model: 'imagen-3.0-generate-002',
-      prompt: prompt,
-      config: {
-        numberOfImages: 1,
-        outputMimeType: 'image/jpeg',
-        aspectRatio: '1:1',
-      },
-    });
+    if (!googleRes.ok) {
+      return res.status(googleRes.status).json({
+        error: "Google API rebotó la solicitud",
+        details: data
+      });
+    }
 
-    const base64Image = response.generatedImages?.[0]?.image?.imageBytes;
+    // Extraer la imagen en base64
+    const base64Image = data.predictions?.[0]?.bytesBase64Encoded;
 
     if (!base64Image) {
-      return res.status(500).json({ error: "Google no devolvió la imagen esperada", rawResponse: response });
+      return res.status(500).json({ error: "No se recibió la imagen en la respuesta", raw: data });
     }
 
     return res.status(200).json({
@@ -69,10 +66,6 @@ export default async function handler(req, res) {
     });
 
   } catch (err) {
-    console.error("ERROR EN EL SDK:", err);
-    return res.status(500).json({
-      error: "Error procesando la imagen con el SDK de Google",
-      message: err.message
-    });
+    return res.status(500).json({ error: "Error en el servidor", message: err.message });
   }
 }
