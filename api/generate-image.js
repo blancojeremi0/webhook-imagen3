@@ -39,24 +39,29 @@ export default async function handler(req, res) {
     }
 
     console.log("Enviando petición a Google AI Studio...");
-    const googleUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key=${apiKey}`;
+
+    // ENDPOINT CORREGIDO PARA IMAGEN 3 EN GOOGLE AI STUDIO (v1beta / predict)
+    const googleUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
 
     const googleResponse = await fetch(googleUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        instances: [{ prompt: prompt }],
+        instances: [
+          { prompt: prompt }
+        ],
         parameters: {
           sampleCount: 1,
           aspectRatio: "1:1",
-          outputOptions: { mimeType: "image/jpeg" }
+          outputOptions: {
+            mimeType: "image/jpeg"
+          }
         }
       })
     });
 
     console.log("Respuesta de Google Status:", googleResponse.status);
 
-    // Leer el texto crudo de la respuesta para evitar "Unexpected end of JSON input"
     const rawText = await googleResponse.text();
     console.log("Respuesta cruda de Google:", rawText);
 
@@ -78,9 +83,11 @@ export default async function handler(req, res) {
       });
     }
 
-    const base64Image = data.generatedImages?.[0]?.image?.imageBytes;
+    // Extraer imagen desde la respuesta oficial (predictions)
+    const base64Image = data.predictions?.[0]?.bytesBase64Encoded || data.generatedImages?.[0]?.image?.imageBytes;
+
     if (!base64Image) {
-      return res.status(500).json({ error: "No se recibió la imagen base64 de Google", details: data });
+      return res.status(500).json({ error: "No se encontró el contenido base64 en la respuesta", details: data });
     }
 
     return res.status(200).json({
